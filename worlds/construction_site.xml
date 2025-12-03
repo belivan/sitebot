@@ -1,0 +1,132 @@
+<mujoco model="construction_site">
+  <compiler angle="radian" coordinate="local"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicit"/>
+
+  <default>
+    <joint armature="0.01" damping="0.1"/>
+    <geom condim="3" friction="1.0 0.005 0.0001"/>
+    <motor ctrllimited="true" ctrlrange="-10 10"/>
+  </default>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.6 0.7 0.9" rgb2="0.2 0.3 0.5" width="512" height="512"/>
+    <texture name="groundtex" type="2d" builtin="flat" rgb1="0.6 0.55 0.45" rgb2="0.65 0.6 0.5" width="512" height="512"/>
+    <texture name="concrete" type="2d" builtin="flat" rgb1="0.7 0.7 0.7" rgb2="0.75 0.75 0.75" width="256" height="256"/>
+    <material name="groundmat" texture="groundtex" texrepeat="20 20"/>
+    <material name="concrete_mat" texture="concrete"/>
+    <material name="chassis_mat" rgba="0.9 0.5 0.1 1"/>
+    <material name="wheel_mat" rgba="0.2 0.2 0.2 1"/>
+    <material name="sensor_mat" rgba="0.1 0.1 0.8 1"/>
+    <material name="obstacle_mat" rgba="0.8 0.3 0.1 1"/>
+    <material name="marker_mat" rgba="0.1 0.8 0.1 1"/>
+    <material name="boundary_mat" rgba="1.0 0.8 0.0 1"/>
+  </asset>
+
+  <worldbody>
+    <!-- Ground plane - construction site floor -->
+    <geom name="ground" type="plane" size="25 25 0.1" material="groundmat"/>
+    <light name="sun" pos="0 0 15" dir="0 0 -1" diffuse="1 1 1" castshadow="true"/>
+    <light name="ambient" pos="0 0 10" diffuse="0.3 0.3 0.3" specular="0 0 0"/>
+
+    <!-- Site boundary markers (yellow posts) -->
+    <body name="boundary_nw" pos="-20 20 0.5">
+      <geom type="cylinder" size="0.1 0.5" material="boundary_mat"/>
+    </body>
+    <body name="boundary_ne" pos="20 20 0.5">
+      <geom type="cylinder" size="0.1 0.5" material="boundary_mat"/>
+    </body>
+    <body name="boundary_sw" pos="-20 -20 0.5">
+      <geom type="cylinder" size="0.1 0.5" material="boundary_mat"/>
+    </body>
+    <body name="boundary_se" pos="20 -20 0.5">
+      <geom type="cylinder" size="0.1 0.5" material="boundary_mat"/>
+    </body>
+
+    <!-- Work area markers (green - survey points) -->
+    <body name="marker_1" pos="-5 5 0.02">
+      <geom type="cylinder" size="0.15 0.02" material="marker_mat"/>
+    </body>
+    <body name="marker_2" pos="5 5 0.02">
+      <geom type="cylinder" size="0.15 0.02" material="marker_mat"/>
+    </body>
+    <body name="marker_3" pos="5 -5 0.02">
+      <geom type="cylinder" size="0.15 0.02" material="marker_mat"/>
+    </body>
+    <body name="marker_4" pos="-5 -5 0.02">
+      <geom type="cylinder" size="0.15 0.02" material="marker_mat"/>
+    </body>
+
+    <!-- Obstacles - construction materials -->
+    <body name="pallet_1" pos="10 8 0.15">
+      <geom type="box" size="0.6 0.4 0.15" material="obstacle_mat"/>
+    </body>
+    <body name="pallet_2" pos="-8 -12 0.15">
+      <geom type="box" size="0.5 0.5 0.15" material="obstacle_mat"/>
+    </body>
+    <body name="pipes" pos="12 -5 0.1">
+      <geom type="cylinder" size="0.1 1.5" euler="0 1.5708 0" material="concrete_mat"/>
+    </body>
+
+    <!-- Concrete blocks -->
+    <body name="block_1" pos="-12 3 0.25">
+      <geom type="box" size="0.3 0.3 0.25" material="concrete_mat"/>
+    </body>
+    <body name="block_2" pos="-12 5 0.25">
+      <geom type="box" size="0.3 0.3 0.25" material="concrete_mat"/>
+    </body>
+
+    <!-- SiteBot: Differential Drive Robot -->
+    <body name="chassis" pos="0 0 0.15">
+      <freejoint name="root"/>
+      <inertial pos="0 0 0" mass="50" diaginertia="2 2 1"/>
+
+      <!-- Main chassis body -->
+      <geom name="chassis_box" type="box" size="0.4 0.25 0.1" material="chassis_mat"/>
+
+      <!-- Sensor mast (simulating GPS/total station receiver) -->
+      <geom name="mast" type="cylinder" pos="0 0 0.25" size="0.03 0.15" material="sensor_mat"/>
+      <geom name="sensor_head" type="sphere" pos="0 0 0.42" size="0.06" material="sensor_mat"/>
+
+      <!-- Left wheel -->
+      <body name="left_wheel" pos="0 0.3 -0.05">
+        <joint name="left_wheel_joint" type="hinge" axis="0 1 0" limited="false"/>
+        <inertial pos="0 0 0" mass="2" diaginertia="0.02 0.04 0.02"/>
+        <geom name="left_wheel_geom" type="cylinder" size="0.1 0.04" euler="1.5708 0 0" material="wheel_mat"/>
+      </body>
+
+      <!-- Right wheel -->
+      <body name="right_wheel" pos="0 -0.3 -0.05">
+        <joint name="right_wheel_joint" type="hinge" axis="0 1 0" limited="false"/>
+        <inertial pos="0 0 0" mass="2" diaginertia="0.02 0.04 0.02"/>
+        <geom name="right_wheel_geom" type="cylinder" size="0.1 0.04" euler="1.5708 0 0" material="wheel_mat"/>
+      </body>
+
+      <!-- Front caster -->
+      <body name="front_caster" pos="0.35 0 -0.05">
+        <inertial pos="0 0 0" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+        <geom name="front_caster_geom" type="sphere" size="0.05" friction="0.1 0.001 0.0001"/>
+      </body>
+
+      <!-- Rear caster -->
+      <body name="rear_caster" pos="-0.35 0 -0.05">
+        <inertial pos="0 0 0" mass="0.5" diaginertia="0.001 0.001 0.001"/>
+        <geom name="rear_caster_geom" type="sphere" size="0.05" friction="0.1 0.001 0.0001"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="left_motor" joint="left_wheel_joint" gear="1" ctrllimited="true" ctrlrange="-10 10"/>
+    <motor name="right_motor" joint="right_wheel_joint" gear="1" ctrllimited="true" ctrlrange="-10 10"/>
+  </actuator>
+
+  <sensor>
+    <framepos name="chassis_pos" objtype="body" objname="chassis"/>
+    <framequat name="chassis_quat" objtype="body" objname="chassis"/>
+    <framelinvel name="chassis_vel" objtype="body" objname="chassis"/>
+    <frameangvel name="chassis_angvel" objtype="body" objname="chassis"/>
+    <jointvel name="left_wheel_vel" joint="left_wheel_joint"/>
+    <jointvel name="right_wheel_vel" joint="right_wheel_joint"/>
+  </sensor>
+</mujoco>

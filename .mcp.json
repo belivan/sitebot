@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mujoco-mcp": {
+      "command": "/Users/antonyanovich/Projects/Robotics/sitebot/.sitebot_env/bin/python",
+      "args": ["-c", "from mujoco_mcp.mcp_server import main; import asyncio; asyncio.run(main())"],
+      "cwd": "/Users/antonyanovich/Projects/Robotics/sitebot/mcp_server",
+      "env": {
+        "PYTHONPATH": "/Users/antonyanovich/Projects/Robotics/sitebot/mcp_server/src"
+      }
+    }
+  }
+}

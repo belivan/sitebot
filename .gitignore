@@ -1,0 +1,30 @@
+# Virtual environment
+.sitebot_env/
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MuJoCo
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output
+output/
