@@ -1,0 +1,3 @@
+[submodule "ros2_ws/src/mujoco_ros2_control"]
+	path = ros2_ws/src/mujoco_ros2_control
+	url = https://github.com/moveit/mujoco_ros2_control.git
