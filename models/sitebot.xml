@@ -64,8 +64,9 @@
   </worldbody>
 
   <actuator>
-    <motor name="left_motor" joint="left_wheel_joint" gear="1" ctrllimited="true" ctrlrange="-10 10"/>
-    <motor name="right_motor" joint="right_wheel_joint" gear="1" ctrllimited="true" ctrlrange="-10 10"/>
+    <!-- Motor actuators with high torque for responsive velocity control -->
+    <motor name="left_motor" joint="left_wheel_joint" gear="50" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="right_motor" joint="right_wheel_joint" gear="50" ctrllimited="true" ctrlrange="-100 100"/>
   </actuator>
 
   <sensor>

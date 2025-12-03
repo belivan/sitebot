@@ -27,6 +27,7 @@ dependencies = [
     "mcp>=1.0.0",
     "numpy>=1.22.0",
     "pydantic>=2.0.0",
+    "roslibpy>=1.6.0",  # ROS2 rosbridge client for MCP integration
 ]
 
 [project.optional-dependencies]

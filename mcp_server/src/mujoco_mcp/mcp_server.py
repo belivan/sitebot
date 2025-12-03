@@ -24,6 +24,7 @@ import mcp.types as types
 
 from .version import __version__
 from .viewer_client import MuJoCoViewerClient as ViewerClient
+from .rosbridge_client import get_rosbridge_client, ROSLIBPY_AVAILABLE
 
 # MCP Protocol constants
 MCP_PROTOCOL_VERSION = "2024-11-05"
@@ -48,6 +49,7 @@ class _ResourcePayload:
 
 
 viewer_client: ViewerClient | None = None
+rosbridge_client = None  # Will be initialized on first ROS2 tool call
 
 
 def _json_content(payload: Dict[str, Any]) -> List[types.TextContent]:
@@ -321,6 +323,124 @@ async def handle_list_tools() -> List[types.Tool]:
                 "examples": [{"model_id": "my_robot", "width": 800, "height": 600}],
             },
         ),
+        # ROS2 tools via rosbridge
+        types.Tool(
+            name="ros2_connect",
+            description="Connect to ROS2 via rosbridge WebSocket. Required before using other ros2_* tools.",
+            inputSchema={
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                    "host": {
+                        "type": "string",
+                        "description": "rosbridge WebSocket host",
+                        "default": "localhost",
+                    },
+                    "port": {
+                        "type": "integer",
+                        "description": "rosbridge WebSocket port",
+                        "default": 9090,
+                    },
+                },
+                "required": [],
+                "additionalProperties": False,
+                "examples": [{"host": "localhost", "port": 9090}],
+            },
+        ),
+        types.Tool(
+            name="ros2_status",
+            description="Get ROS2 rosbridge connection status",
+            inputSchema={
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+                "examples": [{}],
+            },
+        ),
+        types.Tool(
+            name="ros2_drive",
+            description="Send velocity command to the robot via ROS2 /cmd_vel topic",
+            inputSchema={
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                    "linear_x": {
+                        "type": "number",
+                        "description": "Forward velocity in m/s (positive=forward, negative=backward)",
+                    },
+                    "angular_z": {
+                        "type": "number",
+                        "description": "Angular velocity in rad/s (positive=left, negative=right)",
+                    },
+                },
+                "required": ["linear_x", "angular_z"],
+                "additionalProperties": False,
+                "examples": [
+                    {"linear_x": 0.5, "angular_z": 0.0},
+                    {"linear_x": 0.0, "angular_z": 0.5},
+                ],
+            },
+        ),
+        types.Tool(
+            name="ros2_stop",
+            description="Stop the robot by sending zero velocity",
+            inputSchema={
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+                "examples": [{}],
+            },
+        ),
+        types.Tool(
+            name="ros2_get_pose",
+            description="Get robot pose from ROS2 odometry",
+            inputSchema={
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+                "examples": [{}],
+            },
+        ),
+        types.Tool(
+            name="ros2_navigate_to",
+            description="Send navigation goal to Nav2 (requires Nav2 stack running)",
+            inputSchema={
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "type": "number",
+                        "description": "Target X position in meters",
+                    },
+                    "y": {
+                        "type": "number",
+                        "description": "Target Y position in meters",
+                    },
+                    "theta": {
+                        "type": "number",
+                        "description": "Target heading in radians",
+                        "default": 0.0,
+                    },
+                    "frame_id": {
+                        "type": "string",
+                        "description": "Reference frame",
+                        "default": "map",
+                    },
+                },
+                "required": ["x", "y"],
+                "additionalProperties": False,
+                "examples": [
+                    {"x": 5.0, "y": 3.0},
+                    {"x": 10.0, "y": -2.0, "theta": 1.57},
+                ],
+            },
+        ),
     ]
 
 
@@ -420,6 +540,121 @@ async def handle_read_resource(uri: str):
 
     return [_ResourcePayload(content=json.dumps(payload), mime_type="application/json")]
 
+async def _handle_ros2_tool(name: str, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    """Handle ROS2 tools via rosbridge."""
+    global rosbridge_client
+
+    # Check if roslibpy is available
+    if not ROSLIBPY_AVAILABLE:
+        return _error(
+            code="ros2_unavailable",
+            message="ROS2 integration is not available. roslibpy package not installed.",
+            remediation="Install roslibpy: pip install roslibpy",
+        )
+
+    if name == "ros2_connect":
+        host = arguments.get("host", "localhost")
+        port = arguments.get("port", 9090)
+
+        rosbridge_client = get_rosbridge_client(host, port)
+        if rosbridge_client.connected:
+            return _success("Already connected to rosbridge", {
+                "host": host,
+                "port": port,
+                "connected": True,
+            })
+
+        if rosbridge_client.connect():
+            return _success("Connected to rosbridge", {
+                "host": host,
+                "port": port,
+                "connected": True,
+            })
+        else:
+            return _error(
+                code="ros2_connection_failed",
+                message=f"Failed to connect to rosbridge at {host}:{port}",
+                remediation="Ensure rosbridge_websocket is running in the Docker container.",
+            )
+
+    if name == "ros2_status":
+        if not rosbridge_client:
+            return _success("ROS2 status", {
+                "connected": False,
+                "message": "rosbridge client not initialized. Call ros2_connect first.",
+                "roslibpy_available": ROSLIBPY_AVAILABLE,
+            })
+        return _success("ROS2 status", rosbridge_client.get_connection_status())
+
+    # All other ros2_* tools require connection
+    if not rosbridge_client or not rosbridge_client.connected:
+        return _error(
+            code="ros2_not_connected",
+            message="Not connected to ROS2. Call ros2_connect first.",
+            remediation="Use ros2_connect tool to establish connection to rosbridge.",
+        )
+
+    if name == "ros2_drive":
+        linear_x = arguments.get("linear_x", 0.0)
+        angular_z = arguments.get("angular_z", 0.0)
+        result = rosbridge_client.publish_cmd_vel(linear_x, angular_z)
+        if result.get("success"):
+            return _success("Velocity command sent", result)
+        else:
+            return _error(
+                code="ros2_cmd_vel_failed",
+                message=result.get("error", "Failed to publish cmd_vel"),
+            )
+
+    if name == "ros2_stop":
+        result = rosbridge_client.stop_robot()
+        if result.get("success"):
+            return _success("Robot stopped", result)
+        else:
+            return _error(
+                code="ros2_stop_failed",
+                message=result.get("error", "Failed to stop robot"),
+            )
+
+    if name == "ros2_get_pose":
+        result = rosbridge_client.get_odom()
+        if result.get("success"):
+            return _success("Robot pose from odometry", result)
+        else:
+            return _error(
+                code="ros2_odom_failed",
+                message=result.get("error", "Failed to get odometry"),
+                remediation="Ensure diff_drive_controller is publishing odometry.",
+            )
+
+    if name == "ros2_navigate_to":
+        x = arguments.get("x")
+        y = arguments.get("y")
+        theta = arguments.get("theta", 0.0)
+        frame_id = arguments.get("frame_id", "map")
+
+        if x is None or y is None:
+            return _error(
+                code="missing_argument",
+                message="Both 'x' and 'y' arguments are required.",
+            )
+
+        result = rosbridge_client.navigate_to_pose(x, y, theta, frame_id)
+        if result.get("success"):
+            return _success("Navigation goal sent", result)
+        else:
+            return _error(
+                code="ros2_nav_failed",
+                message=result.get("error", "Failed to send navigation goal"),
+                remediation="Ensure Nav2 stack is running.",
+            )
+
+    return _error(
+        code="unknown_ros2_tool",
+        message=f"Unknown ROS2 tool: {name}",
+    )
+
+
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.TextContent]:
     """Handle tool calls with MCP-compliant responses."""
@@ -444,9 +679,20 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.T
                         "get_state",
                         "reset_simulation",
                         "close_viewer",
+                        "ros2_connect",
+                        "ros2_drive",
+                        "ros2_get_pose",
+                        "ros2_navigate_to",
+                        "ros2_stop",
+                        "ros2_status",
                     ],
+                    "ros2_available": ROSLIBPY_AVAILABLE,
                 },
             )
+
+        # Handle ROS2 tools
+        if name.startswith("ros2_"):
+            return await _handle_ros2_tool(name, arguments)
 
         if name not in {
             "create_scene", "step_simulation", "get_state", "reset_simulation", "close_viewer",

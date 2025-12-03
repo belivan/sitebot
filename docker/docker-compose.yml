@@ -1,0 +1,37 @@
+services:
+  ros2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ros2
+    container_name: sitebot_ros2
+    ports:
+      - "9090:9090"  # rosbridge WebSocket for MCP
+      - "6080:6080"  # noVNC web viewer for live simulation
+    volumes:
+      - ../ros2_ws/src:/ros2_ws/src  # Live code editing
+      - ../models:/models:ro          # Robot models (read-only)
+      - ../worlds:/worlds:ro          # World files (read-only)
+    environment:
+      - ROS_DOMAIN_ID=0
+      - DISPLAY=:99
+      - LIBGL_ALWAYS_SOFTWARE=1
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+        # Start virtual display
+        Xvfb :99 -screen 0 1280x720x24 &
+        sleep 2 &&
+
+        # Start VNC server on display :99
+        x11vnc -display :99 -forever -shared -nopw -rfbport 5900 &
+        sleep 1 &&
+
+        # Start noVNC web proxy (access via http://localhost:6080/vnc.html)
+        websockify --web=/usr/share/novnc 6080 localhost:5900 &
+
+        # Launch ROS2 simulation
+        source /opt/ros/humble/setup.bash &&
+        source /ros2_ws/install/setup.bash &&
+        ros2 launch sitebot_ros sitebot.launch.py
+      "
