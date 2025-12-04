@@ -35,6 +35,16 @@
       <geom name="mast" type="cylinder" pos="0 0 0.25" size="0.03 0.15" material="sensor_mat"/>
       <geom name="sensor_head" type="sphere" pos="0 0 0.42" size="0.06" material="sensor_mat"/>
 
+      <!-- Lidar mount sites for rangefinder sensors (360 degree coverage) -->
+      <site name="lidar_0" pos="0 0 0.45" euler="0 1.5708 0" size="0.01"/>
+      <site name="lidar_45" pos="0 0 0.45" euler="0 1.5708 0.7854" size="0.01"/>
+      <site name="lidar_90" pos="0 0 0.45" euler="0 1.5708 1.5708" size="0.01"/>
+      <site name="lidar_135" pos="0 0 0.45" euler="0 1.5708 2.3562" size="0.01"/>
+      <site name="lidar_180" pos="0 0 0.45" euler="0 1.5708 3.1416" size="0.01"/>
+      <site name="lidar_225" pos="0 0 0.45" euler="0 1.5708 3.927" size="0.01"/>
+      <site name="lidar_270" pos="0 0 0.45" euler="0 1.5708 4.7124" size="0.01"/>
+      <site name="lidar_315" pos="0 0 0.45" euler="0 1.5708 5.4978" size="0.01"/>
+
       <!-- Left wheel -->
       <body name="left_wheel" pos="0 0.3 -0.05">
         <joint name="left_wheel_joint" type="hinge" axis="0 1 0" limited="false"/>
@@ -49,32 +59,44 @@
         <geom name="right_wheel_geom" type="cylinder" size="0.1 0.04" euler="1.5708 0 0" material="wheel_mat"/>
       </body>
 
-      <!-- Front caster -->
-      <body name="front_caster" pos="0.35 0 -0.05">
+      <!-- Front caster (lowered to touch ground: chassis z=0.15, offset -0.10, radius 0.05 = z=0) -->
+      <body name="front_caster" pos="0.35 0 -0.10">
         <inertial pos="0 0 0" mass="0.5" diaginertia="0.001 0.001 0.001"/>
-        <geom name="front_caster_geom" type="sphere" size="0.05" friction="0.1 0.001 0.0001"/>
+        <geom name="front_caster_geom" type="sphere" size="0.05" friction="0.01 0.001 0.0001" rgba="0.5 0.5 0.5 1"/>
       </body>
 
-      <!-- Rear caster -->
-      <body name="rear_caster" pos="-0.35 0 -0.05">
+      <!-- Rear caster (lowered to touch ground) -->
+      <body name="rear_caster" pos="-0.35 0 -0.10">
         <inertial pos="0 0 0" mass="0.5" diaginertia="0.001 0.001 0.001"/>
-        <geom name="rear_caster_geom" type="sphere" size="0.05" friction="0.1 0.001 0.0001"/>
+        <geom name="rear_caster_geom" type="sphere" size="0.05" friction="0.01 0.001 0.0001" rgba="0.5 0.5 0.5 1"/>
       </body>
     </body>
   </worldbody>
 
   <actuator>
-    <!-- Motor actuators with high torque for responsive velocity control -->
-    <motor name="left_motor" joint="left_wheel_joint" gear="50" ctrllimited="true" ctrlrange="-100 100"/>
-    <motor name="right_motor" joint="right_wheel_joint" gear="50" ctrllimited="true" ctrlrange="-100 100"/>
+    <!-- Motor actuators with high gear ratio for strong velocity tracking -->
+    <!-- gear=500 amplifies torque, ctrlrange allows large control signals -->
+    <motor name="left_motor" joint="left_wheel_joint" gear="500" ctrllimited="true" ctrlrange="-1000 1000"/>
+    <motor name="right_motor" joint="right_wheel_joint" gear="500" ctrllimited="true" ctrlrange="-1000 1000"/>
   </actuator>
 
   <sensor>
+    <!-- Chassis state sensors -->
     <framepos name="chassis_pos" objtype="body" objname="chassis"/>
     <framequat name="chassis_quat" objtype="body" objname="chassis"/>
     <framelinvel name="chassis_vel" objtype="body" objname="chassis"/>
     <frameangvel name="chassis_angvel" objtype="body" objname="chassis"/>
     <jointvel name="left_wheel_vel" joint="left_wheel_joint"/>
     <jointvel name="right_wheel_vel" joint="right_wheel_joint"/>
+
+    <!-- Lidar rangefinder sensors (8 beams at 45 degree intervals) -->
+    <rangefinder name="range_0" site="lidar_0"/>
+    <rangefinder name="range_45" site="lidar_45"/>
+    <rangefinder name="range_90" site="lidar_90"/>
+    <rangefinder name="range_135" site="lidar_135"/>
+    <rangefinder name="range_180" site="lidar_180"/>
+    <rangefinder name="range_225" site="lidar_225"/>
+    <rangefinder name="range_270" site="lidar_270"/>
+    <rangefinder name="range_315" site="lidar_315"/>
   </sensor>
 </mujoco>

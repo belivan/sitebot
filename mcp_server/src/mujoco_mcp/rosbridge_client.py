@@ -42,6 +42,13 @@ class RosbridgeClient:
         self._latest_odom: Optional[Dict[str, Any]] = None
         self._odom_lock = threading.Lock()
 
+        # Continuous velocity publishing
+        self._vel_thread: Optional[threading.Thread] = None
+        self._vel_lock = threading.Lock()
+        self._current_linear_x = 0.0
+        self._current_angular_z = 0.0
+        self._vel_running = False
+
     def connect(self) -> bool:
         """Connect to rosbridge WebSocket server."""
         if not ROSLIBPY_AVAILABLE:
@@ -73,6 +80,8 @@ class RosbridgeClient:
 
     def disconnect(self):
         """Disconnect from rosbridge."""
+        # Stop velocity publisher first
+        self._stop_velocity_publisher()
         if self._odom_sub:
             self._odom_sub.unsubscribe()
         if self._cmd_vel_pub:
@@ -108,13 +117,53 @@ class RosbridgeClient:
         with self._odom_lock:
             self._latest_odom = message
 
+    def _velocity_publisher_loop(self):
+        """Background loop that continuously publishes velocity commands."""
+        while self._vel_running and self.connected:
+            with self._vel_lock:
+                linear_x = self._current_linear_x
+                angular_z = self._current_angular_z
+
+            if self._cmd_vel_pub:
+                msg = {
+                    'linear': {'x': linear_x, 'y': 0.0, 'z': 0.0},
+                    'angular': {'x': 0.0, 'y': 0.0, 'z': angular_z}
+                }
+                try:
+                    self._cmd_vel_pub.publish(roslibpy.Message(msg))
+                except Exception as e:
+                    logger.warning(f"Error publishing cmd_vel: {e}")
+
+            time.sleep(0.1)  # 10 Hz publishing rate
+
+    def _start_velocity_publisher(self):
+        """Start the background velocity publisher thread."""
+        if self._vel_thread is None or not self._vel_thread.is_alive():
+            self._vel_running = True
+            self._vel_thread = threading.Thread(
+                target=self._velocity_publisher_loop,
+                daemon=True
+            )
+            self._vel_thread.start()
+
+    def _stop_velocity_publisher(self):
+        """Stop the background velocity publisher thread."""
+        self._vel_running = False
+        if self._vel_thread:
+            self._vel_thread.join(timeout=1.0)
+            self._vel_thread = None
+
     # -------------------------------------------------------------------------
     # Public API for MCP tools
     # -------------------------------------------------------------------------
 
     def publish_cmd_vel(self, linear_x: float, angular_z: float) -> Dict[str, Any]:
         """
-        Publish velocity command to /cmd_vel.
+        Set continuous velocity command.
+
+        Uses a background thread to continuously publish velocity commands
+        at 10Hz to prevent cmd_vel timeout (diff_drive_controller times out
+        after 0.5s without new commands).
 
         Args:
             linear_x: Forward velocity (m/s)
@@ -127,14 +176,17 @@ class RosbridgeClient:
             return {"success": False, "error": "Not connected to ROS2"}
 
         try:
-            msg = {
-                'linear': {'x': linear_x, 'y': 0.0, 'z': 0.0},
-                'angular': {'x': 0.0, 'y': 0.0, 'z': angular_z}
-            }
-            self._cmd_vel_pub.publish(roslibpy.Message(msg))
+            # Update target velocity
+            with self._vel_lock:
+                self._current_linear_x = linear_x
+                self._current_angular_z = angular_z
+
+            # Start continuous publisher if not running
+            self._start_velocity_publisher()
+
             return {
                 "success": True,
-                "message": "Velocity command published",
+                "message": "Velocity command set (continuous publishing)",
                 "cmd_vel": {"linear_x": linear_x, "angular_z": angular_z}
             }
         except Exception as e:

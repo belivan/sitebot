@@ -8,7 +8,8 @@ services:
       - "9090:9090"  # rosbridge WebSocket for MCP
       - "6080:6080"  # noVNC web viewer for live simulation
     volumes:
-      - ../ros2_ws/src:/ros2_ws/src  # Live code editing
+      # Only mount sitebot_ros (not mujoco_ros2_control which is built in container)
+      - ../ros2_ws/src/sitebot_ros:/ros2_ws/src/sitebot_ros
       - ../models:/models:ro          # Robot models (read-only)
       - ../worlds:/worlds:ro          # World files (read-only)
     environment:

@@ -74,6 +74,24 @@
     <origin xyz="0 0 0.32" rpy="0 0 0"/>
   </joint>
 
+  <!-- Laser/Lidar frame for Nav2 -->
+  <link name="laser_frame">
+    <visual>
+      <geometry>
+        <cylinder radius="0.04" length="0.02"/>
+      </geometry>
+      <material name="red">
+        <color rgba="0.8 0.1 0.1 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser_frame"/>
+    <origin xyz="0 0 0.30" rpy="0 0 0"/>
+  </joint>
+
   <!-- Left wheel -->
   <link name="left_wheel">
     <visual>
@@ -152,7 +170,7 @@
   <joint name="front_caster_joint" type="fixed">
     <parent link="base_link"/>
     <child link="front_caster"/>
-    <origin xyz="0.35 0 -0.05" rpy="0 0 0"/>
+    <origin xyz="0.35 0 -0.10" rpy="0 0 0"/>
   </joint>
 
   <!-- Rear caster -->
@@ -177,7 +195,7 @@
   <joint name="rear_caster_joint" type="fixed">
     <parent link="base_link"/>
     <child link="rear_caster"/>
-    <origin xyz="-0.35 0 -0.05" rpy="0 0 0"/>
+    <origin xyz="-0.35 0 -0.10" rpy="0 0 0"/>
   </joint>
 
   <!-- ros2_control hardware interface -->
@@ -191,9 +209,6 @@
         <param name="min">-20</param>
         <param name="max">20</param>
       </command_interface>
-      <param name="velocity_kp">50.0</param>
-      <param name="velocity_ki">5.0</param>
-      <param name="velocity_kd">0.1</param>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
@@ -202,9 +217,6 @@
         <param name="min">-20</param>
         <param name="max">20</param>
       </command_interface>
-      <param name="velocity_kp">50.0</param>
-      <param name="velocity_ki">5.0</param>
-      <param name="velocity_kd">0.1</param>
       <state_interface name="position"/>
       <state_interface name="velocity"/>
     </joint>
