@@ -2,6 +2,7 @@
 .sitebot_env/
 venv/
 .venv/
+env/
 
 # Python
 __pycache__/
@@ -12,24 +13,77 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.egg
+.eggs/
+*.manifest
+*.spec
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.project
+.pydevproject
+.settings/
 
-# MuJoCo
+# MuJoCo / Simulation
 *.log
+*.mjb
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
-# Output
+# Output / Temporary
 output/
+tmp/
+temp/
+*.tmp
+
+# Screenshots (development artifacts)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+screenshots/
 
 # ROS2 workspace build artifacts
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
+
+# Gazebo cache
+.gazebo/
+
+# Docker
+*.dockerignore
+
+# Coverage / Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MCP server
+mcp_server/.pytest_cache/
+mcp_server/*.egg-info/
+
+# Credentials / Secrets
+*.pem
+*.key
+.env
+.env.local
+secrets.yaml
+credentials.json

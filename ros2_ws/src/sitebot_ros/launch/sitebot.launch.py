@@ -120,6 +120,20 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('use_rosbridge')),
     )
 
+    # Simulated Lidar publisher (raycasting from odom against known obstacles)
+    lidar_pub = Node(
+        package='sitebot_ros',
+        executable='lidar_publisher',
+        name='simulated_lidar',
+        output='screen',
+        parameters=[{
+            'num_beams': 360,
+            'scan_rate': 10.0,
+            'range_max': 30.0,
+            'frame_id': 'laser_frame',
+        }]
+    )
+
     # Nav2 (optional)
     nav2_params = PathJoinSubstitution([pkg_sitebot, 'config', 'nav2_params.yaml'])
 
@@ -147,6 +161,9 @@ def generate_launch_description():
         # Controllers
         spawn_joint_state,
         spawn_diff_drive,
+
+        # Sensors
+        lidar_pub,
 
         # MCP access
         rosbridge_node,

@@ -19,12 +19,13 @@ setup(
     zip_safe=True,
     maintainer='SiteBot Developer',
     maintainer_email='user@example.com',
-    description='ROS2 package for SiteBot with mujoco_ros2_control and Nav2',
+    description='ROS2 package for SiteBot with Gazebo Harmonic and Nav2',
     license='MIT',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'mujoco_bridge = sitebot_ros.mujoco_bridge:main',
+            'lidar_publisher = sitebot_ros.lidar_publisher:main',
         ],
     },
 )

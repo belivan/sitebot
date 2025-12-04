@@ -1,81 +1,86 @@
-FROM ros:humble
+FROM ros:jazzy
 
-# Install mujoco_ros2_control, Nav2, and dependencies
+# Install Gazebo Harmonic, Nav2, and dependencies
 RUN apt-get update && apt-get install -y \
-    # MuJoCo + ros2_control
-    ros-humble-ros2-control \
-    ros-humble-ros2-controllers \
-    ros-humble-diff-drive-controller \
-    ros-humble-joint-state-broadcaster \
+    # Gazebo Harmonic (comes with ros-jazzy)
+    ros-jazzy-ros-gz \
+    ros-jazzy-ros-gz-sim \
+    ros-jazzy-ros-gz-bridge \
+    ros-jazzy-ros-gz-image \
+    ros-jazzy-ros-gz-interfaces \
+    # ros2_control (for state publishing)
+    ros-jazzy-ros2-control \
+    ros-jazzy-ros2-controllers \
+    ros-jazzy-joint-state-broadcaster \
     # Nav2 stack
-    ros-humble-navigation2 \
-    ros-humble-nav2-bringup \
-    ros-humble-slam-toolbox \
-    ros-humble-robot-localization \
+    ros-jazzy-navigation2 \
+    ros-jazzy-nav2-bringup \
+    ros-jazzy-slam-toolbox \
+    ros-jazzy-robot-localization \
     # rosbridge for MCP access
-    ros-humble-rosbridge-server \
-    ros-humble-rosbridge-library \
-    ros-humble-rosapi \
+    ros-jazzy-rosbridge-server \
+    ros-jazzy-rosbridge-library \
+    ros-jazzy-rosapi \
     # TF and tools
-    ros-humble-tf2-ros \
-    ros-humble-tf2-tools \
-    ros-humble-xacro \
-    ros-humble-robot-state-publisher \
-    ros-humble-joint-state-publisher \
+    ros-jazzy-tf2-ros \
+    ros-jazzy-tf2-tools \
+    ros-jazzy-xacro \
+    ros-jazzy-robot-state-publisher \
+    ros-jazzy-joint-state-publisher \
     # Build tools
     python3-pip \
     git \
     wget \
-    # MuJoCo dependencies
-    libglfw3-dev \
-    libgl1-mesa-dev \
     # Virtual display for headless rendering
     xvfb \
     libosmesa6-dev \
-    libgl1-mesa-glx \
+    libgl1 \
     # VNC for live simulation viewing
     x11vnc \
     novnc \
     websockify \
+    # X11 utilities for RViz (xhost, wmctrl for window management)
+    x11-xserver-utils \
+    wmctrl \
+    openbox \
     && rm -rf /var/lib/apt/lists/*
 
-# Install MuJoCo C++ library
-ARG MUJOCO_VERSION=3.2.6
-RUN cd /opt && \
-    wget -q https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/mujoco-${MUJOCO_VERSION}-linux-aarch64.tar.gz && \
-    tar -xzf mujoco-${MUJOCO_VERSION}-linux-aarch64.tar.gz && \
-    rm mujoco-${MUJOCO_VERSION}-linux-aarch64.tar.gz && \
-    mv mujoco-${MUJOCO_VERSION} mujoco
-
-ENV MUJOCO_DIR=/opt/mujoco
-
-# Clone mujoco_ros2_control from MoveIt (tested on Humble)
-RUN cd /opt && git clone https://github.com/moveit/mujoco_ros2_control.git
-
-# Install Python dependencies
-RUN pip3 install numpy mujoco roslibpy
+# Install Python dependencies (--break-system-packages needed for Ubuntu 24.04 PEP 668)
+# MuJoCo Python for standalone RL training (not ROS2 integration)
+RUN pip3 install --break-system-packages --ignore-installed numpy mujoco roslibpy
 
 # Set up workspace
 WORKDIR /ros2_ws
 
-# Copy mujoco_ros2_control to workspace
-RUN cp -r /opt/mujoco_ros2_control /ros2_ws/src/
-
-# Copy our package
+# Copy our ROS2 package
 COPY ros2_ws/src /ros2_ws/src
 
-# Copy robot models
+# Copy Gazebo models and worlds
+COPY gazebo /gazebo
+
+# Copy MuJoCo models (for standalone RL training)
 COPY models /models
 COPY worlds /worlds
 
+# Set Gazebo model path
+ENV GZ_SIM_RESOURCE_PATH=/gazebo/models:/gazebo/worlds
+
 # Build the workspace
 SHELL ["/bin/bash", "-c"]
-RUN source /opt/ros/humble/setup.bash && \
-    colcon build --symlink-install --packages-skip mujoco_ros2_control_examples
+RUN source /opt/ros/jazzy/setup.bash && \
+    colcon build --symlink-install
 
 # Source setup on container start
-RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+RUN echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
 RUN echo "source /ros2_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "export GZ_SIM_RESOURCE_PATH=/gazebo/models:/gazebo/worlds" >> ~/.bashrc
+
+# Environment variables for RViz software rendering in VNC
+RUN echo "export DISPLAY=:1" >> ~/.bashrc
+RUN echo "export XDG_RUNTIME_DIR=/tmp/runtime-root" >> ~/.bashrc
+RUN echo "export QT_X11_NO_MITSHM=1" >> ~/.bashrc
+RUN echo "export LIBGL_ALWAYS_SOFTWARE=1" >> ~/.bashrc
+RUN echo "export MESA_GL_VERSION_OVERRIDE=3.3" >> ~/.bashrc
 
 # Expose rosbridge and noVNC ports
 EXPOSE 9090 6080

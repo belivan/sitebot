@@ -7,6 +7,14 @@
       "env": {
         "PYTHONPATH": "/Users/antonyanovich/Projects/Robotics/sitebot/mcp_server/src"
       }
+    },
+    "ros-mcp": {
+      "command": "/Users/antonyanovich/Projects/Robotics/sitebot/.sitebot_env/bin/ros-mcp",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "ROS_BRIDGE_HOST": "localhost",
+        "ROS_BRIDGE_PORT": "9090"
+      }
     }
   }
 }

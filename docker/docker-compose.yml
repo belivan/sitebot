@@ -8,31 +8,45 @@ services:
       - "9090:9090"  # rosbridge WebSocket for MCP
       - "6080:6080"  # noVNC web viewer for live simulation
     volumes:
-      # Only mount sitebot_ros (not mujoco_ros2_control which is built in container)
       - ../ros2_ws/src/sitebot_ros:/ros2_ws/src/sitebot_ros
-      - ../models:/models:ro          # Robot models (read-only)
-      - ../worlds:/worlds:ro          # World files (read-only)
+      - ../gazebo:/gazebo                # Gazebo models and worlds
+      - ../models:/models:ro             # MuJoCo models (for RL, read-only)
+      - ../worlds:/worlds:ro             # MuJoCo worlds (for RL, read-only)
     environment:
       - ROS_DOMAIN_ID=0
-      - DISPLAY=:99
+      - DISPLAY=:1
       - LIBGL_ALWAYS_SOFTWARE=1
+      - GZ_SIM_RESOURCE_PATH=/gazebo/models:/gazebo/worlds
+      - XDG_RUNTIME_DIR=/tmp/runtime-root
+      - QT_X11_NO_MITSHM=1
+      - MESA_GL_VERSION_OVERRIDE=3.3
     stdin_open: true
     tty: true
     command: >
       bash -c "
-        # Start virtual display
-        Xvfb :99 -screen 0 1280x720x24 &
+        # Create runtime directory
+        mkdir -p /tmp/runtime-root &&
+
+        # Start virtual display (larger resolution for side-by-side windows)
+        Xvfb :1 -screen 0 1920x1080x24 &
         sleep 2 &&
 
-        # Start VNC server on display :99
-        x11vnc -display :99 -forever -shared -nopw -rfbport 5900 &
+        # Start window manager (needed for proper window rendering)
+        DISPLAY=:1 openbox &
         sleep 1 &&
 
-        # Start noVNC web proxy (access via http://localhost:6080/vnc.html)
+        # Enable X access for all local connections
+        DISPLAY=:1 xhost +local:root 2>/dev/null || true &&
+
+        # Start VNC server on display :1
+        x11vnc -display :1 -forever -shared -nopw -rfbport 5900 &
+        sleep 1 &&
+
+        # Start noVNC web proxy (access via http://localhost:6080/vnc_lite.html)
         websockify --web=/usr/share/novnc 6080 localhost:5900 &
 
-        # Launch ROS2 simulation
-        source /opt/ros/humble/setup.bash &&
+        # Launch Gazebo simulation with ROS2
+        source /opt/ros/jazzy/setup.bash &&
         source /ros2_ws/install/setup.bash &&
-        ros2 launch sitebot_ros sitebot.launch.py
+        ros2 launch sitebot_ros gazebo.launch.py use_rosbridge:=true
       "
